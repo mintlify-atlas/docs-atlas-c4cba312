@@ -1,47 +1,105 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Bicyblex Store in 5 Steps"
+sidebarTitle: "Quickstart"
+description: "Clone Bicyblex Store, configure your Supabase project, add environment variables, and have a fully working local dev server running in under 10 minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+This guide walks you through getting Bicyblex Store running on your local machine from a clean checkout. By the end of these five steps you will have a working Next.js dev server connected to your own Supabase project, with the public storefront visible at `http://localhost:3000` and the admin dashboard accessible via `/login`.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+<Note>
+  **Prerequisites:** Before starting, make sure you have the following installed or set up:
+  - **Node.js 18 or later** — required by Next.js 16
+  - **A Supabase account** — create one free at [supabase.com](https://supabase.com)
+  - **Git** — to clone the repository
+</Note>
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Clone the repository">
+    Clone the Bicyblex Store repository from GitHub and move into the project directory:
 
     ```bash
-    npm install your-package
+    git clone https://github.com/bicyblex/bicyblexStore.git && cd bicyblexStore
     ```
+
+    The project uses the Next.js **Pages Router** (not the App Router), so the entry points for all pages live in the top-level `pages/` directory.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
-    ```
+  <Step title="Install dependencies">
+    Install all project dependencies using your preferred package manager:
+
+    <CodeGroup>
+      ```bash npm
+      npm install
+      ```
+
+      ```bash yarn
+      yarn install
+      ```
+
+      ```bash pnpm
+      pnpm install
+      ```
+    </CodeGroup>
+
+    This will install Next.js 16, React 19, `@supabase/supabase-js` v2, `react-icons` v5, and the Tailwind CSS v4 PostCSS plugin among other dependencies listed in `package.json`.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Create environment variables">
+    Create a `.env.local` file in the project root and add your Supabase project credentials:
+
+    ```env .env.local
+    NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+    ```
+
+    Both values are available in your Supabase project under **Project Settings → API**:
+
+    - **`NEXT_PUBLIC_SUPABASE_URL`** — the URL listed under "Project URL"
+    - **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** — the `anon` / `public` key listed under "Project API keys"
+
+    <Warning>
+      Never commit `.env.local` to version control. It is already listed in `.gitignore`. If either variable is missing at runtime, `supabaseClient.js` will log a warning (`⚠️ Error: Faltan las variables de entorno de Supabase en .env.local`) and the app will fail to connect to the database.
+    </Warning>
+  </Step>
+
+  <Step title="Set up Supabase">
+    Before the storefront or dashboard will display real data, your Supabase project needs the correct tables and a Storage bucket for product images.
+
+    The required database tables are:
+
+    | Table | Purpose |
+    |---|---|
+    | `products` | All product listings (bikes, motos, kits) with specs and image URLs |
+    | `categories` | Product categories with their associated dynamic spec field definitions |
+    | `news` | News items surfaced in the storefront's newsletter section |
+
+    For full table schemas, Row Level Security policies, and Storage bucket configuration, see the [Supabase Setup guide](/configuration/supabase-setup).
+  </Step>
+
+  <Step title="Start the dev server">
+    Start the Next.js development server:
 
     ```bash
-    your-cli start
+    npm run dev
     ```
+
+    Open [http://localhost:3000](http://localhost:3000) in your browser — you should see the Bicyblex Store public storefront, including the hero, product sections, and footer.
+
+    To access the **admin dashboard**, navigate to [http://localhost:3000/login](http://localhost:3000/login) and sign in with the credentials of a user you have created in your Supabase project's **Authentication → Users** table.
   </Step>
 </Steps>
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Bicyblex Store uses a `jsconfig.json` path alias so that `@/` resolves to the project root. This means any import like `@/src/components/index/topnav` or `@/src/lib/supabaseClient` will work correctly without relative path traversal, regardless of the file's location in the tree.
 </Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Supabase Setup" icon="database" href="/configuration/supabase-setup">
+    Full instructions for creating tables, configuring RLS policies, and setting up the image Storage bucket.
+  </Card>
+  <Card title="Dashboard Overview" icon="gauge" href="/dashboard/overview">
+    Learn how to manage products, categories, and news items from the admin dashboard.
+  </Card>
+</CardGroup>

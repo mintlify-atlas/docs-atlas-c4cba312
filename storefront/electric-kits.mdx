@@ -1,0 +1,66 @@
+---
+title: "Electric Conversion Kits Section on the Storefront"
+sidebarTitle: "Electric Kits"
+description: "The electric kits section showcases conversion kits from Supabase and links visitors directly to WhatsApp for bulk or detailed inquiries."
+---
+
+The `ElectricKits` component (`src/components/index/electricKits.jsx`) renders a dedicated storefront section for electric bicycle conversion kits — one of Bicyblex's key product lines and a major differentiator in the Peruvian e-mobility market. Unlike the bicycles and motos sections which display full product grids, the kits section is intentionally curated: it surfaces a maximum of three kit products from Supabase alongside a fixed "custom project" card, creating a focused and high-converting layout for visitors interested in electrifying their existing bikes.
+
+## How Products Are Loaded
+
+On mount, the component fetches all records from the `products` table with their category relations, then filters in the frontend to only those belonging to the **Kits Eléctricos** category:
+
+```js
+const { data, error } = await supabase
+  .from("products")
+  .select("*, categories(*)");
+
+const kitsFiltrados = data.filter(
+  (item) => item.categories?.name === "Kits Eléctricos"
+);
+
+// Only the first three kits are displayed
+const formattedKits = kitsFiltrados.slice(0, 3).map((item) => ({
+  id: item.id,
+  name: item.name,
+  desc: item.specs?.descripcion || "Ingeniería de alta potencia para tu ruta.",
+  price: `s/${item.price}`,
+  progress: item.specs?.progress || "w-[80%]",
+}));
+```
+
+The section always renders exactly **four cards** in a 2×2 grid: three dynamic kit cards from Supabase, plus one static "¿PROYECTO A MEDIDA?" (custom system) card that encourages visitors with non-standard requirements to reach out directly via WhatsApp.
+
+## Category Slug
+
+Products displayed in this section use the category name **`Kits Eléctricos`** (as stored in the `categories` table). The corresponding slug used in admin forms and URL routing is `kits-electricos`.
+
+The only product spec field for this category is `descripcion` — a free-text field that becomes the short description shown on the kit card. If no description is provided, the component falls back to the default string `"Ingeniería de alta potencia para tu ruta."`.
+
+| Category | Slug | Spec Field |
+|----------|------|------------|
+| Kits Eléctricos | `kits-electricos` | `descripcion` |
+
+## WhatsApp CTA
+
+Each of the three dynamic kit cards links to a product-specific WhatsApp message, constructed by appending the kit name to the standard `productWhatsAppMessageUrl`:
+
+```js
+href={`${data.productWhatsAppMessageUrl}+%20Kit%20Eléctrico+${encodeURIComponent(kit.name)}`}
+```
+
+The fourth, static card — the custom project card — uses a separate context URL designed for bulk or bespoke enquiries:
+
+```js
+MoreElectricKitsMessageUrl: `https://wa.me/+51960413023?text=Hola%20Bicyblex%2C%20me%20gustaria%20saber%20sobre%20los%20kits%20electricos`
+```
+
+This URL opens a WhatsApp conversation with a pre-written Spanish message expressing general interest in the electric kits range, making it ideal for visitors who haven't yet decided on a specific model or who want to discuss a custom build.
+
+<Tip>
+  To add a new electric kit to the storefront, navigate to the admin dashboard, create a product under the **Kits Eléctricos** category, and fill in the `Descripcion` spec field with a concise one-line description of the kit's key capability. The new kit will appear in the next available card slot (up to a maximum of three dynamic cards).
+</Tip>
+
+<Note>
+  In `pages/index.js`, the `<ElectricKits />` component is positioned after `<ElectricMotos />` and before `<Features />`. Visitors reach this section after scrolling through the full bicycle and moto inventories, making them a warm audience already engaged with Bicyblex's electric mobility product line.
+</Note>

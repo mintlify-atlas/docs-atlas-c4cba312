@@ -1,0 +1,154 @@
+---
+title: "Image Upload and WebP Conversion in Bicyblex Store"
+sidebarTitle: "Image Handling"
+description: "How Bicyblex Store converts uploaded images to WebP client-side and stores them in Supabase Storage, with public URL retrieval for the storefront."
+---
+
+All product images uploaded through the admin dashboard are automatically converted to WebP format before being stored in Supabase Storage. This client-side conversion reduces file sizes and ensures consistent image delivery across the storefront. News article cover images follow a similar upload flow but retain their original format.
+
+## `convertToWebP(file, quality)` utility
+
+The `convertToWebP` function in `src/utils/imageUtils.js` handles the entire conversion process in the browser using the Canvas API. It accepts any image format the browser supports and returns a `Promise<File>` that resolves to a `.webp` file.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `file` | `File` | — | The original image file selected by the user |
+| `quality` | `number` | `0.8` | WebP compression quality (0–1, where 1 is lossless) |
+
+**Returns:** `Promise<File>` — a new `File` object with the `.webp` extension.
+
+```js src/utils/imageUtils.js
+export const convertToWebP = (file, quality = 0.8) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const webpFile = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, '.webp'),
+                { type: 'image/webp' }
+              );
+              resolve(webpFile);
+            } else {
+              reject(new Error('Error al convertir a WebP'));
+            }
+          },
+          'image/webp',
+          quality
+        );
+      };
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+```
+
+The conversion process:
+1. `FileReader` reads the original file as a data URL
+2. An `Image` element loads the data URL to get the original dimensions
+3. A `<canvas>` is created at the same dimensions and the image is drawn onto it
+4. `canvas.toBlob()` exports the canvas as a WebP blob at the specified quality
+5. The blob is wrapped in a new `File` with the `.webp` extension
+
+<Tip>
+  The default quality is `0.8` (80%), which gives a good balance between file size and visual quality. To adjust it, pass a custom value: `convertToWebP(file, 0.9)` for higher quality or `convertToWebP(file, 0.6)` for smaller files.
+</Tip>
+
+## Product image upload flow
+
+When an admin submits a new or updated product with an image, `ProductManager.jsx` runs the following sequence:
+
+<Steps>
+  <Step title="User selects an image file">
+    The product form accepts any image type via `<input type="file" accept="image/*">`. The selected file is stored in `formData.imageFile`.
+  </Step>
+  <Step title="Convert to WebP">
+    Before upload, the image is converted client-side:
+    ```js
+    const webpFile = await convertToWebP(payload.imageFile);
+    ```
+  </Step>
+  <Step title="Upload to Supabase Storage">
+    The converted file is uploaded to the `products` bucket with a unique timestamped filename:
+    ```js
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
+    const { data, error } = await supabase.storage
+      .from('products')
+      .upload(fileName, webpFile);
+    ```
+  </Step>
+  <Step title="Retrieve the public URL">
+    After upload, the public URL is fetched and saved in the product row:
+    ```js
+    const { data: publicUrlData } = supabase.storage
+      .from('products')
+      .getPublicUrl(fileName);
+    imageUrl = publicUrlData.publicUrl;
+    ```
+  </Step>
+  <Step title="Save the product record">
+    The product is inserted or updated in the `products` table with the `image` field set to the public URL:
+    ```js
+    const finalPayload = {
+      name: payload.name,
+      price: parseFloat(payload.price) || 0,
+      stock: parseInt(payload.stock) || 0,
+      category_id: parseInt(payload.categoryId),
+      specs: payload.specs || {},
+      image: imageUrl,
+      tag: payload.tag || 'general',
+    };
+    await supabase.from('products').insert([finalPayload]);
+    // or .update(finalPayload).eq('id', payload.id) for edits
+    ```
+  </Step>
+</Steps>
+
+## News image upload flow
+
+News article cover images follow a similar upload pattern, but they are **not** converted to WebP — the original file extension is preserved. Images are stored under the `news/` path prefix inside the `news` bucket.
+
+```js
+const fileExt = imageFile.name.split('.').pop();
+const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+const filePath = `news/${fileName}`;
+
+await supabase.storage.from('news').upload(filePath, imageFile);
+
+const { data: publicUrlData } = supabase.storage
+  .from('news')
+  .getPublicUrl(filePath);
+
+imageUrl = publicUrlData.publicUrl;
+```
+
+When editing an existing article, the image is only replaced if a new file is selected. Otherwise, the existing `image` URL is preserved.
+
+## Storage buckets summary
+
+| Bucket | Used for | Path pattern | Image format |
+|--------|----------|--------------|--------------|
+| `products` | Product images | `{timestamp}_{random}.webp` | WebP (converted client-side) |
+| `news` | News article cover images | `news/{timestamp}-{random}.{ext}` | Original format |
+
+<Note>
+  Both buckets must be set to **public** in the Supabase dashboard for the image URLs to be accessible on the storefront. See [Supabase Setup](/configuration/supabase-setup) for instructions on creating and configuring the buckets.
+</Note>
+
+<Warning>
+  Deleted products and news articles do not automatically remove their images from Supabase Storage. Orphaned files accumulate over time. Implement a cleanup mechanism or periodically audit the buckets if storage usage is a concern.
+</Warning>

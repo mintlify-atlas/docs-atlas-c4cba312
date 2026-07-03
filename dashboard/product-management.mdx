@@ -1,0 +1,109 @@
+---
+title: "Product Management: Add, Edit, and Delete Products"
+sidebarTitle: "Products"
+description: "Manage the Bicyblex product catalog from the dashboard — create products with images and specs, filter by category, and paginate through inventory."
+---
+
+The **PRODUCTOS** tab is the primary inventory management interface in the Bicyblex admin dashboard. Accessible as the default active tab on dashboard load, it is powered by the `ProductManager` component (`src/components/dashboard/product/ProductManager.jsx`), which coordinates a product table, a modal form, and a detail view. All product data is fetched from and persisted to the Supabase `products` table, with product images stored in the Supabase `products` storage bucket and automatically converted to WebP format before upload.
+
+## Product fields
+
+Each product record in the `products` table contains the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | text | Product display name |
+| `price` | numeric | Price in currency (stored as a float via `parseFloat`) |
+| `stock` | integer | Available units in inventory (stored via `parseInt`) |
+| `category_id` | integer (FK) | Foreign key referencing `categories.id` |
+| `specs` | JSONB | Dynamic spec fields; structure varies by category slug |
+| `image` | text | Public URL of the product image in Supabase Storage |
+| `tag` | text | Optional display tag; defaults to `"general"` if not provided |
+
+Products are loaded from Supabase using a joined query that pulls in the category name:
+
+```js
+const { data: p } = await supabase
+  .from('products')
+  .select('*, categories(name)');
+```
+
+This makes `product.categories.name` available for display in the table and filters without a separate categories fetch.
+
+## Category-driven spec fields
+
+When you select a category in the product form, a set of category-specific spec input fields appears dynamically beneath the main fields. The form resolves the selected category's `slug` from the `categories` list and looks it up in the `CONFIG` object inside `ProductForm.jsx` to determine which fields to render.
+
+```js
+const CONFIG = {
+  'bicicletas':           [{ key: 'aro',       label: 'Aro'       }, { key: 'material', label: 'Material' }, { key: 'freno',     label: 'Freno'     }],
+  'bicimotos-electricas': [{ key: 'autonomia', label: 'Autonomía' }, { key: 'potencia', label: 'Potencia' }, { key: 'velocidad', label: 'Velocidad' }],
+  'kits-electricos':      [{ key: 'descripcion', label: 'Descripcion' }],
+  'accesorios':           [{ key: 'Dato 1',    label: 'Dato 1'    }, { key: 'Dato 2',   label: 'Dato 2'   }, { key: 'Dato 3',    label: 'Dato 3'    }],
+};
+```
+
+Each `key` in the spec fields array becomes a key in the product's `specs` JSONB column. Changing the category selection clears the current `specs` object so stale spec data from a prior category doesn't carry over.
+
+## Image upload & WebP conversion
+
+Product images are processed client-side before being stored. When a file is selected in the product form, it is **not** uploaded as-is — instead it is first converted to WebP format using the `convertToWebP()` utility (`src/utils/imageUtils`). The resulting WebP file is then uploaded to the Supabase `products` storage bucket. This keeps image sizes small and format consistent across all product listings.
+
+<Steps>
+  <Step title="Fill the form and select an image">
+    Complete all required product fields (name, price, stock, category, specs) and pick an image file from disk using the file input. Any common image format is accepted as input.
+  </Step>
+  <Step title="Client-side WebP conversion">
+    On form submit, `convertToWebP(payload.imageFile)` is called. This converts the original image to a `.webp` file entirely in the browser before any network request is made.
+  </Step>
+  <Step title="Upload to Supabase Storage">
+    The converted WebP file is uploaded to the `products` bucket with a timestamped, randomised filename to avoid collisions:
+    ```js
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
+    await supabase.storage.from('products').upload(fileName, webpFile);
+    ```
+  </Step>
+  <Step title="Retrieve the public URL">
+    After a successful upload, the public URL is fetched from Supabase Storage:
+    ```js
+    const { data: publicUrlData } = supabase.storage
+      .from('products')
+      .getPublicUrl(fileName);
+    imageUrl = publicUrlData.publicUrl;
+    ```
+  </Step>
+  <Step title="Upsert the product row">
+    The final payload — including the `imageUrl` — is written to the `products` table. For new products, `insert` is used; for edits, `update` is called with the product's `id`:
+    ```js
+    // Insert (new product)
+    await supabase.from('products').insert([finalPayload]);
+
+    // Update (existing product)
+    await supabase.from('products').update(finalPayload).eq('id', payload.id);
+    ```
+    If the image upload step fails, the save operation is aborted entirely and an error alert is shown.
+  </Step>
+</Steps>
+
+When editing an existing product, if no new image file is selected, the original `image` URL is preserved unchanged — the upload and conversion steps are skipped entirely.
+
+## Search and filter
+
+The product table (`ProductTable` component) includes two controls that work together to narrow the visible rows:
+
+- **Search input** — matches against `name`, `id`, `price`, and `categories.name` simultaneously. The search is case-insensitive and runs entirely client-side against the already-loaded product list.
+- **Category dropdown** — filters to products belonging to a specific category by `category_id`. Defaults to `"all"` (show everything).
+
+Both filters reset the current page back to 0 whenever their values change, ensuring you always see results from the first page of the filtered set. The page size is fixed at **10 products per page**, controlled by the `pageSize = 10` constant in `ProductManager`.
+
+## Viewing product details
+
+Each product row in the table includes three action buttons at the right:
+
+- **Eye icon** (`FiEye`) — opens a read-only detail modal showing the product image, category, price, stock, tag, and the full `specs` JSONB object rendered as a key-value list
+- **Edit icon** (`FiEdit2`) — opens the `ProductForm` modal pre-filled with all existing product values
+- **Trash icon** (`FiTrash2`) — triggers a `window.confirm` prompt before permanently deleting the product row from Supabase
+
+<Tip>
+  The `tag` field is a free-text label that can be used to feature or classify products on the storefront — for example, values like `"nuevo"`, `"oferta"`, or `"destacado"` could be used by frontend components to apply badges or special layouts. It defaults to `"general"` if left blank.
+</Tip>

@@ -1,0 +1,63 @@
+---
+title: "Bicyblex Store: Next.js E-commerce for Electric Mobility"
+sidebarTitle: "Introduction"
+description: "Bicyblex Store is a Next.js + Supabase platform for selling bikes and electric kits in Peru, with a built-in admin dashboard and WhatsApp inquiry flow."
+---
+
+Bicyblex Store is a full-stack e-commerce and content management platform built for **Bicyblex Perú** — a retailer specialising in bicycles, electric motos, and electric conversion kits. It is built with Next.js 16 (Pages Router) on the frontend and Supabase for authentication, database, and file storage on the backend. This documentation is aimed at developers who are setting up the project for the first time, extending its functionality, or deploying it to production on Vercel. Whether you're adding a new product category, wiring up a new Supabase table, or customising the storefront UI, this guide covers everything you need.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Public Storefront" icon="store">
+    A customer-facing homepage showcasing bike products, electric motos, and electric conversion kits — each rendered from live Supabase data with instant WhatsApp inquiry links per product.
+  </Card>
+  <Card title="WhatsApp-Integrated Contact Flow" icon="whatsapp">
+    Every product card and newsletter item links directly to a pre-filled WhatsApp message, routed to the Bicyblex business number. Contact URLs are managed centrally via `GlobalContext`.
+  </Card>
+  <Card title="Admin Dashboard" icon="gauge">
+    A protected dashboard at `/dashboard` for managing products, categories, and news items — including image uploads, dynamic spec fields per category, and CRUD operations backed by Supabase.
+  </Card>
+  <Card title="Supabase Backend" icon="database">
+    Supabase powers all data persistence: row-level auth for admin access, PostgreSQL tables for products/categories/news, and a Storage bucket for product images.
+  </Card>
+  <Card title="Automatic WebP Conversion" icon="image">
+    Before any image is uploaded to Supabase Storage, it is client-side converted to `.webp` using the `convertToWebP(file, quality)` utility, keeping storage usage and load times low.
+  </Card>
+  <Card title="Category-Driven Dynamic Spec Fields" icon="list-check">
+    Product spec fields are not hardcoded — they are driven by the selected category, so adding a new category in the dashboard automatically surfaces the right specification inputs in the product form.
+  </Card>
+</CardGroup>
+
+## Tech stack
+
+| Technology | Role |
+|---|---|
+| **Next.js 16** (Pages Router) | Frontend framework and SSR/routing |
+| **Supabase** (`@supabase/supabase-js` v2) | Auth, PostgreSQL database, and file storage |
+| **Tailwind CSS v4** | Utility-first styling via PostCSS |
+| **react-icons v5** | Icon library used across the storefront and dashboard UI |
+| **Vercel** | Recommended deployment platform (zero-config with Next.js) |
+
+## How it works
+
+Bicyblex Store exposes two distinct surfaces to users:
+
+**The public storefront** lives at `/` (`pages/index.js`). It composes a series of section components — `<Topnav>`, `<Hero>`, `<NewsLetter>`, `<Products>`, `<ElectricMotos>`, `<ElectricKits>`, `<Features>`, and `<Footer>` — all wrapped in a `<GlobalProvider>` that injects site-wide data (phone number, WhatsApp URLs, social links, and site version) through React context. Customers browse products and tap WhatsApp links to inquire; there is no cart or checkout — the conversion happens off-platform via WhatsApp.
+
+**The protected admin dashboard** lives at `/dashboard` (`pages/dashboard.js`). It renders the `<Dashboard>` component, which handles auth-gating via Supabase Auth. From there, administrators can manage products (create, edit, delete, upload images), manage product categories and their associated spec fields, and post news items that appear on the storefront's newsletter section.
+
+<Note>
+  The `/login` page (`pages/login.js`) renders the `<Login>` component and is the entry point to the admin area. Visiting `/dashboard` without an active Supabase session will redirect the user back to `/login`.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Clone the repo, set up your environment variables, and have a local dev server running in under 10 minutes.
+  </Card>
+  <Card title="Supabase Setup" icon="database" href="/configuration/supabase-setup">
+    Create the required tables, configure Row Level Security, and set up your Storage bucket for product images.
+  </Card>
+</CardGroup>

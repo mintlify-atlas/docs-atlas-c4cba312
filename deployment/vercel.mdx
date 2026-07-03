@@ -1,0 +1,100 @@
+---
+title: "Deploy Bicyblex Store to Vercel"
+sidebarTitle: "Vercel"
+description: "Step-by-step guide to deploying Bicyblex Store on Vercel — import the repo, set Supabase environment variables, and go live in minutes."
+---
+
+Bicyblex Store is built for zero-friction Vercel deployment. The project already runs at [`bicyblex-store.vercel.app`](https://bicyblex-store.vercel.app) and, because Next.js 16 is natively supported by Vercel's build infrastructure, only two environment variables stand between your codebase and a fully live storefront. No custom build configuration, no extra adapters — just a GitHub import and two Supabase keys.
+
+## Deployment steps
+
+<Steps>
+  <Step title="Push your repo to GitHub">
+    Ensure the `bicyblexStore` repository is pushed to GitHub and up to date. The project's `.gitignore` excludes all `.env*` files, so your Supabase credentials will never be accidentally committed. Double-check before pushing:
+
+    ```bash
+    git status
+    # .env.local must not appear in tracked files
+    git push origin main
+    ```
+
+    <Warning>
+      Never commit `.env.local` or any file containing `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` to your repository. The `.gitignore` already blocks `.env*` — do not override this.
+    </Warning>
+  </Step>
+
+  <Step title="Import to Vercel">
+    1. Go to [vercel.com](https://vercel.com) and click **New Project**.
+    2. Under **Import Git Repository**, connect your GitHub account if you haven't already.
+    3. Locate and select the `bicyblexStore` repository.
+    4. Vercel will auto-detect the Next.js framework — no manual framework selection is needed.
+  </Step>
+
+  <Step title="Set environment variables">
+    Before clicking Deploy, open **Environment Variables** in the project configuration panel and add both keys:
+
+    | Variable | Value |
+    |---|---|
+    | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon public key |
+
+    For each variable, check all three environment targets — **Production**, **Preview**, and **Development** — so that every deployment context has a working Supabase connection.
+
+    You can find both values in your Supabase dashboard under **Project Settings → API**.
+  </Step>
+
+  <Step title="Deploy">
+    Click **Deploy**. Vercel clones your repository, installs dependencies with `npm install`, and runs `next build`. The build output is then deployed to Vercel's edge network. A typical cold build for Bicyblex Store completes in under two minutes.
+  </Step>
+
+  <Step title="Verify the live deployment">
+    Once the deployment succeeds, Vercel will display your production URL. Open it and confirm:
+
+    - The storefront homepage loads and products are visible (requires seeded data in Supabase).
+    - Navigate to `/login` and verify the admin authentication page renders correctly.
+    - Log in and confirm the admin dashboard is accessible.
+
+    If the storefront loads but shows no products, your Supabase tables may not yet be seeded. See [Supabase Setup](/configuration/supabase-setup) for table creation and seeding steps.
+  </Step>
+</Steps>
+
+---
+
+## Build command
+
+Vercel auto-detects Next.js projects and uses `next build` without any manual configuration. The full set of scripts available in `package.json` is:
+
+```json package.json
+{
+  "scripts": {
+    "dev":   "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint":  "eslint"
+  }
+}
+```
+
+No custom build command, output directory override, or install command override is required in Vercel's project settings. The defaults work correctly with Next.js 16 and React 19.
+
+<Warning>
+  Never set environment variables inside `next.config.mjs` or hardcode them anywhere in the repository. Always use Vercel's **Environment Variables** UI for production and preview deployments, and `.env.local` for local development only.
+</Warning>
+
+---
+
+## Preview deployments
+
+Every push to any branch automatically triggers a Vercel preview deployment with a unique URL. This is ideal for reviewing product listing changes, testing the checkout UI, or validating admin dashboard updates before merging to `main`.
+
+For preview deployments to work correctly, the Supabase environment variables must be set for the **Preview** environment in Vercel — which is why step 3 above instructs you to enable all three environment targets. Without these keys in the Preview environment, the Supabase client will fail to initialise and every preview deploy will have a broken backend.
+
+<Tip>
+  To validate a production-equivalent build locally before pushing to Vercel, run:
+
+  ```bash
+  npm run build && npm run start
+  ```
+
+  This runs `next build` followed by `next start`, which serves the optimised production bundle on `http://localhost:3000` — the same output Vercel will deploy.
+</Tip>

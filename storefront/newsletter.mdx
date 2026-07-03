@@ -1,0 +1,88 @@
+---
+title: "Newsletter & News Section on the Bicyblex Storefront"
+sidebarTitle: "Newsletter"
+description: "The newsletter section displays published news articles from Supabase and uses WhatsApp deep links so visitors can request more information on each article."
+---
+
+The `<NewsLetter>` component (`src/components/index/newsLetter.jsx`) renders a news and updates section prominently on the public storefront homepage, pulling articles from the `news` Supabase table and presenting them as a smooth, auto-advancing slideshow. Each article is shown with its cover image, title, excerpt, publication date, and author — and a direct WhatsApp button inviting visitors to ask about the topic in conversation. This turns a passive content section into an active engagement channel, consistent with Bicyblex's WhatsApp-first sales approach.
+
+## Data Model
+
+News articles are stored in the `news` table in Supabase. The component queries all records ordered by publication date descending, so the most recent article always appears first:
+
+```js
+const { data, error } = await supabase
+  .from("news")
+  .select("*")
+  .order("published_at", { ascending: false });
+```
+
+Each article record exposes the following fields used by the component:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `uuid` | Unique identifier for the article |
+| `title` | `text` | Article headline, displayed in large display font |
+| `content` | `text` | Full article body (stored but not rendered in the slider) |
+| `image` | `text` | URL of the article cover image |
+| `slug` | `text` | URL-safe identifier used for routing and WhatsApp links |
+| `excerpt` | `text` | Short summary shown in the slider (max ~150 characters) |
+| `published_at` | `timestamptz` | Publication timestamp, formatted for display with `toLocaleDateString()` |
+| `author` | `text` | Author name displayed alongside the publication date |
+
+If no articles are found in the table, the component returns `null` and renders nothing — the section disappears from the page entirely rather than showing an empty container.
+
+## Slideshow Behavior
+
+The component auto-advances through articles every **6 seconds** using a `setInterval` loop that resets when the component unmounts:
+
+```js
+const interval = setInterval(() => {
+  setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
+}, 6000);
+```
+
+Visitors can also navigate manually using the previous and next arrow buttons rendered in the section header. Progress indicators at the bottom of the slide container show which article is currently active.
+
+## WhatsApp Integration
+
+Each article card includes a **"PREGUNTAR POR WHATSAPP →"** button. When clicked, it opens a WhatsApp conversation pre-populated with a message referencing the article title. The URL is constructed by appending the encoded article title to the `newsLetterWhatsAppMessageUrl` base from `GlobalContext`:
+
+```js
+newsLetterWhatsAppMessageUrl: `https://wa.me/+51960413023?text=Hola%20Bicyblex%2C%20me%20gustaria%20saber%20sobre%20la%20noticia%20`
+```
+
+The full link built in the component:
+
+```js
+href={`${data.newsLetterWhatsAppMessageUrl}+${encodeURIComponent(slide.title)}`}
+```
+
+This means a visitor reading a news article about, for example, a new kit launch, can tap one button and land in a WhatsApp chat with the exact article title already typed — giving the Bicyblex team instant context for the inquiry.
+
+## Managing News Articles
+
+All article creation, editing, and deletion is handled through the Bicyblex admin dashboard.
+
+<Steps>
+  <Step title="Open the admin dashboard">
+    Navigate to the admin dashboard and go to [News Management](/dashboard/news-management).
+  </Step>
+  <Step title="Create a new article">
+    Click **New Article**, fill in the `title`, `content`, `author`, and upload a cover `image`. The `slug` is auto-generated from the title.
+  </Step>
+  <Step title="Review the excerpt">
+    The excerpt is automatically generated from the first 150 characters of the article content when the article is saved. You can override it manually if needed.
+  </Step>
+  <Step title="Publish">
+    Save the article. It will immediately appear in the `news` table and the storefront slideshow will include it on the next page load, sorted by `published_at` descending.
+  </Step>
+</Steps>
+
+<Note>
+  The `<NewsLetter />` section is placed immediately after `<Hero />` and before the product catalog sections (`<Products />`, `<ElectricMotos />`) in `pages/index.js`. This positioning is intentional — visitors who scroll past the hero see fresh news content before reaching the product grid, establishing trust and brand credibility early in the browsing experience.
+</Note>
+
+<Tip>
+  Excerpts are auto-generated from the first 150 characters of the article `content` field when an article is saved through the admin dashboard. Keep the opening sentence of every article concise and descriptive — it will become the first thing storefront visitors read in the slider.
+</Tip>

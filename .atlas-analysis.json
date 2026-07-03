@@ -1,0 +1,90 @@
+{
+  "projectType": "saas",
+  "projectName": "Bicyblex Store",
+  "projectDescription": "A full-stack e-commerce storefront and admin platform for Bicyblex Perú — selling bicycles, electric motos, and electric conversion kits — built with Next.js and Supabase.",
+  "theme": "almond",
+  "primaryColor": "#f3b40e",
+  "lightColor": "#f5d446",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "project-structure"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-variables",
+              "configuration/supabase-setup"
+            ]
+          },
+          {
+            "group": "Storefront",
+            "pages": [
+              "storefront/overview",
+              "storefront/product-catalog",
+              "storefront/electric-kits",
+              "storefront/newsletter"
+            ]
+          },
+          {
+            "group": "Admin Dashboard",
+            "pages": [
+              "dashboard/overview",
+              "dashboard/authentication",
+              "dashboard/product-management",
+              "dashboard/category-management",
+              "dashboard/news-management"
+            ]
+          },
+          {
+            "group": "Data & Storage",
+            "pages": [
+              "data/database-schema",
+              "data/image-handling"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/vercel",
+              "deployment/environment-setup"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Public storefront with bike products, electric motos, and electric conversion kits",
+    "WhatsApp-integrated contact and product inquiry flow",
+    "Admin dashboard with product CRUD and inventory management",
+    "Category management with auto-generated slugs",
+    "News/newsletter module with rich article publishing",
+    "Supabase backend for auth, database, and image storage",
+    "Automatic WebP image conversion on upload",
+    "Paginated and filterable product table",
+    "Per-category dynamic spec fields (aro, material, potencia, autonomía, etc.)",
+    "Session-based authentication with redirect protection"
+  ],
+  "publicApiSurface": [
+    "supabase.from('products').select / insert / update / delete",
+    "supabase.from('categories').select / insert / update / delete",
+    "supabase.from('news').select / insert / update / delete",
+    "supabase.storage.from('products').upload / getPublicUrl",
+    "supabase.storage.from('news').upload / getPublicUrl",
+    "supabase.auth.getSession()",
+    "supabase.auth.signOut()",
+    "useGlobalData() — GlobalContext hook exposing phone, WhatsApp URLs, email, social links",
+    "convertToWebP(file, quality) — client-side image conversion utility",
+    "Page routes: / (storefront), /login, /dashboard"
+  ]
+}

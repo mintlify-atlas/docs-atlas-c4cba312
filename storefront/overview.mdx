@@ -1,0 +1,88 @@
+---
+title: "Bicyblex Storefront: Public-Facing Website Overview"
+sidebarTitle: "Overview"
+description: "The Bicyblex public storefront is a single-page Next.js app with sections for bikes, electric motos, kits, features, newsletter, and WhatsApp contact."
+---
+
+The Bicyblex storefront is the public-facing website of the platform — a single-page Next.js 16 application that presents Bicyblex's full product offering to visitors in Perú. Built for performance and mobile responsiveness, it combines real-time Supabase product data with WhatsApp deep-link integrations to convert browsing visitors into direct chat inquiries. Every section of the page is driven by live data from the database and configured through a single shared context object, making the storefront both dynamic and easy to maintain.
+
+## Page Sections
+
+The homepage (`pages/index.js`) renders the following sections in order, each implemented as a standalone React component:
+
+| Order | Component | Description |
+|-------|-----------|-------------|
+| 1 | `<Topnav />` | Sticky navigation bar with anchor links to each section and a WhatsApp contact button. |
+| 2 | `<Hero />` | Full-viewport header with the `/hero.png` background image, the headline **"DOMINA CUALQUIER TERRENO"**, and a CTA scrolling visitors down to the bikes section. |
+| 3 | `<NewsLetter />` | Auto-advancing slideshow of recent news articles fetched from the Supabase `news` table, each with a WhatsApp inquiry CTA. |
+| 4 | `<Products />` | Grid of bicycle products fetched from Supabase, filterable by wheel size (aro). Sourced from `bikeProducts.jsx`. |
+| 5 | `<ElectricMotos />` | Grid of electric moto products with autonomy, motor power, and top-speed specs. Sourced from `electricMotos.jsx`. |
+| 6 | `<ElectricKits />` | Showcase of up to three electric conversion kits from Supabase, plus a fixed "custom project" card with a WhatsApp CTA for bulk inquiries. |
+| 7 | `<Features />` | Three brand-value cards: **CALIDAD QUE SE SIENTE**, **CONFIANZA TOTAL**, and **TRATO CERCANO Y AMABLE**. |
+| 8 | `<Footer />` | Four-column footer with navigation links, social media icons (TikTok, Instagram, WhatsApp), and copyright. |
+
+## Component File Map
+
+| File | Role |
+|------|------|
+| `src/components/index/topnav.jsx` | Sticky top navigation with anchor links and WhatsApp button |
+| `src/components/index/hero.jsx` | Full-screen hero section with brand headline and scroll CTA |
+| `src/components/index/newsLetter.jsx` | News slider fetching from the `news` Supabase table |
+| `src/components/index/bikeProducts.jsx` | Bicycle product grid with aro filter, fetched from `products` |
+| `src/components/index/electricMotos.jsx` | Electric moto grid with spec cards, fetched from `products` |
+| `src/components/index/electricKits.jsx` | Electric kit cards (max 3) plus custom inquiry card |
+| `src/components/index/features.jsx` | Static three-column brand value section |
+| `src/components/index/footer.jsx` | Site footer with social links and contact info |
+| `src/context/GlobalContext.js` | Global site config provider and `useGlobalData()` hook |
+
+## GlobalContext
+
+The entire homepage is wrapped in `<GlobalProvider>`, defined in `src/context/GlobalContext.js`. This provider makes a single `siteData` configuration object available to every component in the tree via React Context. Any component that needs site-wide config — such as WhatsApp URLs, contact details, or social links — calls the `useGlobalData()` hook instead of hard-coding values.
+
+```js
+import { useGlobalData } from '@/src/context/GlobalContext';
+
+export default function MyComponent() {
+  const { phone, productWhatsAppMessageUrl } = useGlobalData();
+  // Use phone or productWhatsAppMessageUrl anywhere in JSX
+}
+```
+
+### Available Fields in `siteData`
+
+The full `siteData` object exported by `GlobalContext.js` is:
+
+```js
+const siteData = {
+  phone: "+51960413023",
+  defaultWhatsAppMessageUrl: `https://wa.me/+51960413023?text=Hola%20Bicyblex%2C%20estoy%20interesado%20en%20sus%20productos.%20¿Podrían%20proporcionarme%20más%20información%3F`,
+  newsLetterWhatsAppMessageUrl: `https://wa.me/+51960413023?text=Hola%20Bicyblex%2C%20me%20gustaria%20saber%20sobre%20la%20noticia%20`,
+  productWhatsAppMessageUrl: `https://wa.me/+51960413023?text=Hola%20Bicyblex%2C%20estoy%20interesado%20en%20el%20producto%20`,
+  MoreElectricKitsMessageUrl: `https://wa.me/+51960413023?text=Hola%20Bicyblex%2C%20me%20gustaria%20saber%20sobre%20los%20kits%20electricos`,
+  email: "bicyblex.pe@gmail.com",
+  status: "ONLINE",
+  version: "V2.4.1",
+  tiktokLink: "https://www.tiktok.com/@bicyblex",
+  instagramLink: "https://www.instagram.com/bicyblex.pe/",
+};
+```
+
+Each URL field is a pre-encoded `wa.me` deep link that opens a WhatsApp chat with Bicyblex pre-filled with a Spanish message appropriate to the context (general inquiry, product inquiry, news inquiry, or kits inquiry).
+
+<Note>
+  The `version` field (currently `"V2.4.1"`) tracks the active deployment of the storefront. It can be surfaced in the admin dashboard or browser console for quick debugging — if a reported issue doesn't match expected behavior, confirming the `version` value first helps rule out stale caches or deployment mismatches.
+</Note>
+
+## Explore Further
+
+<CardGroup cols={3}>
+  <Card title="Product Catalog" icon="bicycle" href="/storefront/product-catalog">
+    How bikes and electric motos are fetched from Supabase and displayed on the storefront.
+  </Card>
+  <Card title="Electric Kits" icon="bolt" href="/storefront/electric-kits">
+    The electric conversion kits section and its WhatsApp inquiry flow.
+  </Card>
+  <Card title="Newsletter" icon="newspaper" href="/storefront/newsletter">
+    The news & events slider and how articles are managed from the admin dashboard.
+  </Card>
+</CardGroup>

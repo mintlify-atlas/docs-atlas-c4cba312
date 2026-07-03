@@ -1,0 +1,150 @@
+---
+title: "Production Environment Setup for Bicyblex Store"
+sidebarTitle: "Environment Setup"
+description: "Configure Bicyblex Store for production — environment variables, Supabase project settings, storage bucket access, and auth user management."
+---
+
+Before going live, every layer of the Bicyblex Store stack must be correctly configured — from the two Supabase environment variables Vercel needs to resolve the API connection, to the storage bucket permissions that allow product images to render in the storefront. Skipping any of these steps results in a partially broken production site. Work through the checklist below from top to bottom before announcing the store publicly.
+
+## Pre-launch checklist
+
+<Steps>
+  <Step title="Environment variables set in Vercel">
+    Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be present in Vercel's **Settings → Environment Variables** for the **Production** environment. Without them, the Supabase client cannot initialise and every page that fetches data will fail at runtime.
+
+    See the [Environment variables reference](#environment-variables-reference) section below for exactly where to find each value in the Supabase dashboard.
+  </Step>
+
+  <Step title="Supabase tables created">
+    The storefront and admin dashboard depend on three tables being present in your Supabase project:
+
+    - `products` — stores all bicycle and accessory listings
+    - `categories` — stores the product category taxonomy
+    - `news` — stores blog/news articles shown on the storefront
+
+    If you haven't created these tables yet, follow the [Supabase Setup](/configuration/supabase-setup) guide for the full schema.
+  </Step>
+
+  <Step title="Categories seeded">
+    The product listing pages expect at least the four default categories to exist in the `categories` table. Without them, the category filter UI will be empty and no products can be assigned to a category in the admin dashboard.
+
+    The four required category slugs are:
+
+    | Slug | Display name |
+    |---|---|
+    | `bicicletas` | Bicicletas |
+    | `bicimotos-electricas` | Bicimotos Eléctricas |
+    | `kits-electricos` | Kits Eléctricos |
+    | `accesorios` | Accesorios |
+
+    Insert these rows in the Supabase Table Editor or via the SQL editor before your first production deploy.
+  </Step>
+
+  <Step title="Storage buckets set to public">
+    Bicyblex Store uploads product and news images to Supabase Storage. Both buckets must be set to **public access** so the Next.js frontend can render images without requiring authenticated requests.
+
+    In the Supabase dashboard, go to **Storage**, and for each bucket:
+
+    1. Click the bucket name (`products` or `news`).
+    2. Open **Bucket Settings** (or the three-dot menu → **Edit bucket**).
+    3. Toggle **Public bucket** to enabled.
+
+    Images uploaded before this change was made will immediately become publicly accessible once the bucket is set to public.
+  </Step>
+
+  <Step title="Admin user created">
+    The Bicyblex Store admin dashboard is protected by Supabase Authentication. At least one user must exist in **Authentication → Users** before anyone can log in at `/login`.
+
+    To create the first admin user:
+
+    1. Go to **Authentication → Users** in the Supabase dashboard.
+    2. Click **Add user** and enter an email address and password.
+    3. The user is created and can immediately log in — no email confirmation required unless you've enabled it in Auth settings.
+
+    Store the credentials somewhere secure. There is currently no password-reset flow exposed in the storefront UI.
+  </Step>
+
+  <Step title="Row Level Security (RLS) configured">
+    By default, newly created Supabase tables have RLS enabled with no policies, which means all queries — including reads from the public storefront — are blocked. You have two options:
+
+    **Option A — Disable RLS (simpler, suitable for a trusted admin-only backend):**
+    In the Table Editor, open each table (`products`, `categories`, `news`) and toggle RLS off.
+
+    **Option B — Add explicit policies (recommended for production):**
+    Add a `SELECT` policy allowing anonymous reads on all three tables, and restrict `INSERT`, `UPDATE`, and `DELETE` to authenticated users only. This preserves the security benefits of RLS while keeping the public storefront functional.
+
+    ```sql
+    -- Allow anyone to read products
+    CREATE POLICY "Public read products"
+      ON products FOR SELECT
+      USING (true);
+
+    -- Allow authenticated users to manage products
+    CREATE POLICY "Auth users manage products"
+      ON products FOR ALL
+      USING (auth.role() = 'authenticated');
+    ```
+
+    Apply equivalent policies to the `categories` and `news` tables.
+  </Step>
+</Steps>
+
+---
+
+## Environment variables reference
+
+These are the only two environment variables required by Bicyblex Store. Both are prefixed with `NEXT_PUBLIC_`, which means Next.js 16 will embed them into the client-side bundle at build time.
+
+| Variable | Where to find | Required |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → **Project Settings** → **API** → **Project URL** | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → **Project Settings** → **API** → **anon public** | Yes |
+
+<Note>
+  The `NEXT_PUBLIC_` prefix makes these variables visible in the browser bundle — they are intentionally not secret. The Supabase anon key is designed to be exposed in client-side code. The real security boundary is **Row Level Security** in your Supabase project, which controls what unauthenticated and authenticated callers can actually read or modify.
+</Note>
+
+---
+
+## Supabase project settings for production
+
+Once the environment variables are in place, review the following Auth and project settings in the Supabase dashboard before going live:
+
+**Site URL**
+Set the correct Site URL under **Authentication → URL Configuration**. For the live deployment this should be:
+
+```
+https://bicyblex-store.vercel.app
+```
+
+This URL is used by Supabase when constructing email confirmation and password-reset links. An incorrect Site URL causes those links to point to the wrong domain.
+
+**Email confirmations**
+By default, Supabase creates users without requiring email confirmation. If you want to enforce verified email addresses for any future user management features, enable **Confirm email** under **Authentication → Providers → Email**.
+
+**Redirect URLs**
+If you plan to add OAuth providers (Google, GitHub) or magic-link login in the future, add your Vercel production URL and any preview URL patterns to the **Redirect URLs** allowlist under **Authentication → URL Configuration**:
+
+```
+https://bicyblex-store.vercel.app/**
+https://*-bicyblex.vercel.app/**
+```
+
+---
+
+## Switching between environments
+
+For local development, create a `.env.local` file in the project root (this file is gitignored and will never be committed):
+
+```bash .env.local
+NEXT_PUBLIC_SUPABASE_URL=https://your-dev-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-dev-anon-key
+```
+
+For production and preview deployments, these same variables are set through Vercel's **Environment Variables** UI — no `.env` files are deployed to or read from the Vercel runtime.
+
+If your team is actively developing new features, consider maintaining two separate Supabase projects — one for development and one for production. This prevents test data, schema migrations in progress, or RLS experiments from affecting the live storefront. Simply point `.env.local` at the development project and Vercel's Production environment variables at the production project.
+
+<Tip>
+  Ready to deploy? Follow the [Vercel deployment guide](/deployment/vercel) for a step-by-step walkthrough of importing the repository, setting environment variables in the Vercel UI, and verifying the live deployment.
+</Tip>

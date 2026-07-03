@@ -1,0 +1,76 @@
+---
+title: "Category Management: Define Product Classification"
+sidebarTitle: "Categories"
+description: "Manage Bicyblex product categories from the dashboard. Category slugs control which spec fields appear in the product form and how products are filtered on the storefront."
+---
+
+Categories define how products are classified in Bicyblex Store. Every product must belong to a category, and the category's `slug` does more than act as a URL identifier — it is the key that the product form uses to look up which dynamic spec fields to render. Getting slugs right is therefore critical: a category whose slug doesn't match a `CONFIG` entry in `ProductForm.jsx` will produce no spec fields in the product form. Category management is handled by the `CategoryManager` component (`src/components/dashboard/category/categoryManager.jsx`), which reads from and writes to the Supabase `categories` table.
+
+<Note>
+  The **CATEGORÍAS** tab is hidden from the dashboard sidebar by default. Its entry in the `TABS` array inside `src/components/dashboard/dashboard.jsx` has `visible: false`. To expose the tab to the admin sidebar, change this value to `true`. See [Dashboard Overview](/dashboard/overview) for the full `TABS` configuration.
+</Note>
+
+## Category fields
+
+The `categories` table has a minimal schema:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer (auto) | Primary key, auto-incremented by Supabase |
+| `name` | text | Display name shown in product form dropdowns and the category filter |
+| `slug` | text (unique) | URL-safe identifier, auto-generated from the category name on save |
+
+Only the `name` field is entered by the administrator. The `slug` is always derived automatically.
+
+## Auto-generated slugs
+
+When you save a new category (or update an existing one), the `categoryManager` component generates the `slug` from the `name` field using a deterministic normalisation pipeline:
+
+```js
+const generatedSlug = name
+  .toLowerCase()
+  .trim()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')   // strip accents (é → e, ñ → n, etc.)
+  .replace(/[^a-z0-9 -]/g, '')       // remove all non-alphanumeric characters
+  .replace(/\s+/g, '-')              // replace spaces with hyphens
+  .replace(/-+/g, '-');              // collapse multiple consecutive hyphens
+```
+
+For example:
+- `"Bicicletas"` → `"bicicletas"`
+- `"Bicimotos Eléctricas"` → `"bicimotos-electricas"`
+- `"Kits Eléctricos"` → `"kits-electricos"`
+- `"Accesorios"` → `"accesorios"`
+
+The slug is recomputed and overwritten on every save, so renaming a category also regenerates its slug. Be mindful: if existing products reference a category whose slug changes, those products will no longer match the `CONFIG` spec-field mapping until `ProductForm.jsx` is also updated.
+
+## Slug to spec fields mapping
+
+The `slug` value of a category must exactly match a key in the `CONFIG` object inside `src/components/dashboard/product/ProductForm.jsx` for spec fields to appear when creating or editing a product of that category. The four built-in slugs and their associated spec fields are:
+
+| Slug | Spec Fields |
+|---|---|
+| `bicicletas` | `aro`, `material`, `freno` |
+| `bicimotos-electricas` | `autonomia`, `potencia`, `velocidad` |
+| `kits-electricos` | `descripcion` |
+| `accesorios` | `Dato 1`, `Dato 2`, `Dato 3` |
+
+If a product's category slug is not found in `CONFIG`, the `fields` array resolves to `[]` and no spec section is shown in the product form — the product will be saved with an empty `specs: {}` object.
+
+<Warning>
+  If you create a new category whose auto-generated slug doesn't match any key in `ProductForm.jsx`'s `CONFIG`, **no spec fields will appear** in the product form for products of that category. After adding a new category, open `src/components/dashboard/product/ProductForm.jsx` and add a corresponding entry to the `CONFIG` object with the desired spec field keys and labels. The slug must match exactly (case-sensitive).
+</Warning>
+
+## CRUD operations
+
+The `CategoryManager` interface provides the full create / read / update / delete cycle through a table view and two modal dialogs.
+
+**Create**
+Clicking the **AGREGAR CATEGORÍA** button opens the form modal in `"create"` mode. Enter the category name and submit — the slug is auto-generated on save and the new record is inserted into `categories` via `supabase.from('categories').insert(...)`.
+
+**Edit**
+Clicking the pencil icon on a category row opens the same form modal in `"edit"` mode, pre-filled with the current category name. On submit, the name and the newly regenerated slug are written back via `supabase.from('categories').update(...).eq('id', selectedCategory.id)`.
+
+**Delete**
+Clicking the trash icon opens a confirmation modal that displays the category name. Confirming the deletion calls `supabase.from('categories').delete().eq('id', selectedCategory.id)`. If the category is still referenced by products via `category_id`, the deletion may fail depending on your Supabase foreign key constraints — ensure products are reassigned or deleted first.

@@ -1,0 +1,84 @@
+---
+title: "Authenticate and Access the Bicyblex Admin Dashboard"
+sidebarTitle: "Authentication"
+description: "Bicyblex uses Supabase Auth to protect the admin dashboard. Learn how session checks, login, and logout work in the Next.js app."
+---
+
+The Bicyblex admin dashboard is protected by Supabase session-based authentication. Every visit to `/dashboard` triggers an async session check before any dashboard UI is painted. If no valid Supabase session is found, the visitor is automatically redirected to `/login` — there is no way to access the dashboard content without first authenticating. The entire auth flow is handled client-side inside the `DashboardCentral` component using the Supabase JavaScript client.
+
+## How authentication works
+
+When a user navigates to `/dashboard`, the page component `DashboardCentral` mounts and immediately runs an auth check inside a `useEffect` hook. The check calls `supabase.auth.getSession()`, which returns the active session from the Supabase client's local storage cache.
+
+The flow proceeds as follows:
+
+1. User navigates to `/dashboard`
+2. `DashboardCentral` mounts and the `useEffect` fires
+3. `supabase.auth.getSession()` is called asynchronously
+4. **If no session is returned** → `router.push('/login')` redirects the user immediately
+5. **If a session is found** → `setUser(session.user)` stores the user object and `setCheckingAuth(false)` clears the loading state, revealing the dashboard
+
+```js
+useEffect(() => {
+  const checkUserSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/login');
+    } else {
+      setUser(session.user);
+      setCheckingAuth(false);
+    }
+  };
+  checkUserSession();
+}, [router]);
+```
+
+This code lives in `src/components/dashboard/dashboard.jsx` and runs on every dashboard page mount, including after browser refreshes.
+
+## Logging in
+
+The `/login` route renders the `<Login>` component (`src/components/login/login`). Submit your admin credentials through the login form, and upon success Supabase writes the session to local storage. The next navigation to `/dashboard` will pass the session check.
+
+To create an admin user account, use the **Supabase Dashboard** directly — do not expose user creation through any public-facing API endpoint:
+
+1. Open your project in the [Supabase Dashboard](https://supabase.com/dashboard)
+2. Navigate to **Authentication → Users**
+3. Click **Add user** and provide an email and password
+4. The new user can immediately log in at `/login`
+
+<Tip>
+  To create the initial admin user, use the Supabase Dashboard (Authentication → Users → Add user), not the public API. Exposing user registration on a public endpoint would allow anyone to create admin accounts.
+</Tip>
+
+## Logging out
+
+The dashboard sidebar contains a **Cerrar sesión** button at the bottom. Clicking it calls `supabase.auth.signOut()` to invalidate the session, then redirects to `/login`:
+
+```js
+const handleLogout = async () => {
+  await supabase.auth.signOut();
+  router.push('/login');
+};
+```
+
+After logout, the Supabase client clears its local storage cache, so any subsequent navigation to `/dashboard` will fail the session check and redirect back to `/login`.
+
+## Auth during loading
+
+While the session check is in progress (`checkingAuth === true`), `DashboardCentral` renders a full-screen loading state instead of the dashboard layout. This prevents any flash of dashboard content before the auth check resolves:
+
+```jsx
+if (checkingAuth) {
+  return (
+    <div className="...">
+      Autenticando...
+    </div>
+  );
+}
+```
+
+The `checkingAuth` state starts as `true` and is set to `false` only after a valid session is confirmed. A failed session check redirects before `checkingAuth` is ever cleared.
+
+<Warning>
+  The Supabase client is initialized with the `anon` public key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`). Ensure Row Level Security (RLS) is properly configured on all Supabase tables, or explicitly disable RLS only for fully trusted, admin-only deployments. Without RLS, any user with the anon key can read and write all table data. See [Supabase Setup](/configuration/supabase-setup) for configuration details.
+</Warning>

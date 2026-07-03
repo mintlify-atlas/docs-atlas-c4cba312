@@ -1,0 +1,80 @@
+---
+title: "News Management: Publish Articles on the Storefront"
+sidebarTitle: "News"
+description: "Create, edit, preview, and delete news articles from the Bicyblex admin dashboard. Articles appear on the public storefront's newsletter section."
+---
+
+The **NOTICIAS** tab in the admin dashboard manages the news and newsletter content published on the Bicyblex public storefront. Each article is a complete record with a headline, a rich text body, a cover image hosted on Supabase Storage, and two auto-generated fields — a URL-safe `slug` derived from the title and a truncated `excerpt` derived from the content body. The `NewsLetterForm` component (`src/components/dashboard/newsletter/newsLetterForm.jsx`) handles all data operations against the Supabase `news` table, and articles are fetched in reverse-chronological order so the newest content always appears first.
+
+## News article fields
+
+Each record in the `news` table stores the following:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer (auto) | Primary key, auto-incremented by Supabase |
+| `title` | text | Article headline displayed on the storefront |
+| `content` | text | Full article body text |
+| `image` | text | Public URL of the cover image stored in Supabase Storage (`news` bucket) |
+| `slug` | text (unique) | URL-safe identifier, auto-generated from the title on every save |
+| `excerpt` | text | Short preview text, auto-truncated to a maximum of 150 characters from `content` |
+| `created_at` | timestamptz | Automatically set by Supabase on row insertion |
+
+The `slug` and `excerpt` fields are never entered manually — they are always computed and injected by the `handleSaveNews` function immediately before the Supabase insert or update call.
+
+## Auto-generated slug and excerpt
+
+Both the slug and the excerpt are derived from form input and written to the database automatically on every save. This means updating the title of an existing article regenerates its slug, and updating the content regenerates its excerpt.
+
+```js
+// Slug generation — transforms title into a URL-safe identifier
+const generatedSlug = title
+  .toLowerCase()
+  .trim()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')  // strip accents (é → e, ó → o, etc.)
+  .replace(/[^a-z0-9 -]/g, '')      // remove special characters
+  .replace(/\s+/g, '-')             // replace whitespace with hyphens
+  .replace(/-+/g, '-');             // collapse consecutive hyphens
+
+// Excerpt generation — truncates content to a maximum of 150 characters
+const cleanContent = content.trim();
+const generatedExcerpt = cleanContent.length > 150
+  ? `${cleanContent.substring(0, 147)}...`
+  : cleanContent;
+```
+
+For example, a title of `"Nuevas Bicimotos Eléctricas 2025"` becomes the slug `"nuevas-bicimotos-electricas-2025"`. A content body of 200 characters becomes a 150-character excerpt ending with `"..."`.
+
+## Image storage
+
+Cover images for news articles are uploaded to the dedicated `news` bucket in Supabase Storage. The upload path follows the pattern `news/<timestamp>-<random>.<ext>`, preserving the original file extension (unlike product images, news images are **not** converted to WebP):
+
+```js
+const filePath = `news/${fileName}`;
+await supabase.storage.from('news').upload(filePath, imageFile);
+const { data: publicUrlData } = supabase.storage.from('news').getPublicUrl(filePath);
+imageUrl = publicUrlData.publicUrl;
+```
+
+The resulting public URL is stored in the `image` field of the news record. When editing an article, if no new image file is selected, the existing `image` URL is carried forward unchanged — the upload block is skipped entirely.
+
+## CRUD operations
+
+The `NewsLetterForm` interface exposes full create, read, update, preview, and delete operations through a table and three modal dialogs.
+
+**Create**
+Click the **PUBLICAR NUEVA NOTICIA** button to open the form modal in create mode. Fill in the title, article body, and a cover image (required for new articles), then submit. The slug and excerpt are computed automatically before the row is inserted via `supabase.from('news').insert([newsPayload])`.
+
+**Edit**
+Click the pencil icon on any article row to open the form modal pre-filled with the article's current `title` and `content`. The image field is optional during editing — leave it empty to keep the existing cover image, or select a new file to replace it. On submit, the slug and excerpt are regenerated from the current form values and the row is updated via `supabase.from('news').update(newsPayload).eq('id', selectedNews.id)`.
+
+**Preview**
+Click the eye icon to open a read-only view modal showing the article's cover image, publication date, and full content body. No edits can be made from this view.
+
+**Delete**
+Click the trash icon to open a confirmation modal displaying the article title. Confirming calls `supabase.from('news').delete().eq('id', selectedNews.id)` and removes the record permanently. Note that deleting a news row does **not** automatically remove the associated image from Supabase Storage — image cleanup must be handled manually through the Supabase Storage console if needed.
+
+<Tip>
+  Articles are fetched with `.order('created_at', { ascending: false })`, so they always appear on the storefront in reverse-chronological order — newest first. The `created_at` timestamp is set automatically by Supabase at insert time and is not editable through the dashboard form.
+</Tip>

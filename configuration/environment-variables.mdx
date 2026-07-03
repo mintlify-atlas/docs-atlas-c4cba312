@@ -1,0 +1,85 @@
+---
+title: "Environment Variables for Bicyblex Store"
+sidebarTitle: "Environment Variables"
+description: "Configure the two required Supabase environment variables that connect Bicyblex Store to your database, auth, and storage backend."
+---
+
+Bicyblex Store reads two environment variables at startup to connect to Supabase. Both must be present in `.env.local` before running the dev server or deploying — without them the Supabase client will fail to initialize and every database, storage, and auth operation in the app will break silently.
+
+<Warning>
+  Never commit `.env.local` to version control. It is already listed in
+  `.gitignore` for Next.js projects — keep it that way to protect your Supabase
+  credentials.
+</Warning>
+
+## Required variables
+
+Both variables are prefixed with `NEXT_PUBLIC_` so that Next.js exposes them to browser-side code as well as server-side code. This is required because the Supabase client (`src/lib/supabaseClient.js`) is imported throughout both the storefront and the `/dashboard` admin panel, which render on the client.
+
+| Variable                        | Required | Description                                                                              |
+| ------------------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | The URL of your Supabase project (e.g. `https://abcdef.supabase.co`)                    |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | The anonymous public key from your Supabase project's API settings                      |
+
+## Setting up `.env.local`
+
+Create a `.env.local` file at the root of the project and populate it with your project's credentials:
+
+```env .env.local
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+Replace `your-project-id` and `your-anon-key-here` with the actual values from your Supabase project (see [Where to find these values](#where-to-find-these-values) below).
+
+## How the client uses these variables
+
+`src/lib/supabaseClient.js` reads both variables and passes them directly to `createClient`. It also includes a guard that logs a descriptive error to the console if either variable is missing, making misconfiguration easy to diagnose during development:
+
+```js src/lib/supabaseClient.js
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('⚠️ Error: Faltan las variables de entorno de Supabase en .env.local');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+The exported `supabase` singleton is imported across the entire application — the product manager, category manager, newsletter form, and authentication layer all rely on this single instance.
+
+## Where to find these values
+
+Both values live in your Supabase project dashboard:
+
+1. Open [supabase.com](https://supabase.com) and navigate to your project.
+2. Go to **Project Settings** → **API**.
+3. Copy the **Project URL** — this is your `NEXT_PUBLIC_SUPABASE_URL`.
+4. Copy the **`anon` `public`** key — this is your `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+<Note>
+  Do not use the `service_role` key in place of the `anon` key. The
+  `service_role` key bypasses Row Level Security and must never be exposed in
+  client-side code.
+</Note>
+
+## Deploying to Vercel
+
+When deploying to Vercel, `.env.local` is not read from the repository. You must add the variables directly in the Vercel project dashboard:
+
+1. Open your project in [vercel.com](https://vercel.com).
+2. Go to **Settings** → **Environment Variables**.
+3. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` with their respective values.
+4. Redeploy the project for the changes to take effect.
+
+See [Deploying to Vercel](/deployment/vercel) for a full walkthrough of the deployment process.
+
+<Tip>
+  For local development you can also define these variables in a `.env` file at
+  the project root. However, `.env.local` takes precedence over `.env` and is
+  excluded from git by default in Next.js projects — so `.env.local` is the
+  safer and recommended choice for local secrets.
+</Tip>

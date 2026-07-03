@@ -1,0 +1,63 @@
+---
+title: "Admin Dashboard: Manage Products, News, and Categories"
+sidebarTitle: "Overview"
+description: "The Bicyblex admin dashboard is a session-protected panel for managing product inventory, news articles, and category definitions backed by Supabase."
+---
+
+The Bicyblex admin dashboard is the central control panel for store operations. Accessible at `/dashboard`, it requires an authenticated Supabase session — unauthenticated visits are immediately redirected to `/login`. Once inside, administrators can manage the full product catalog, publish news articles for the storefront, and maintain the category taxonomy that drives both product classification and dynamic spec fields. All data operations run directly against Supabase tables and storage buckets, with no intermediate API layer.
+
+## Dashboard layout
+
+The dashboard renders as a two-column layout that fills the entire viewport. The left column is a fixed **sidebar** (260 px wide) and the right column is a scrollable **main content area**.
+
+**Sidebar contents:**
+- The Bicyblex logo and an `administración` label
+- The authenticated user's email address (pulled from `session.user`)
+- Navigation buttons for each visible tab
+- A **Cerrar sesión** (logout) button at the bottom
+
+**Main content area:**
+The area to the right of the sidebar renders the currently active tab component under its section heading (`tab.title`). Only tabs where `visible: true` are rendered in the sidebar navigation; hidden tabs are excluded from both the nav and the tab-switch logic.
+
+## Dashboard tabs
+
+The dashboard defines three tabs in the `TABS` configuration array inside `DashboardCentral`:
+
+| Tab ID | Label | Component | Description | Visible |
+|---|---|---|---|---|
+| `products` | PRODUCTOS | `<ProductManager />` | Full product CRUD with image upload, filtering, and pagination | ✅ |
+| `news` | NOTICIAS | `<NewsletterForm />` | Create and manage news articles published on the storefront | ✅ |
+| `categories` | CATEGORÍAS | `<CategoryManager />` | Define and edit the product category taxonomy | ❌ (hidden) |
+
+### TABS configuration
+
+```js
+const TABS = [
+  { id: 'products',    label: 'PRODUCTOS',   component: <ProductManager />,  title: 'Gestión de Productos',      visible: true  },
+  { id: 'news',        label: 'NOTICIAS',    component: <NewsletterForm />,  title: 'Módulo de Noticias',        visible: true  },
+  { id: 'categories',  label: 'CATEGORÍAS',  component: <CategoryManager />, title: 'Categorías del Sistema',    visible: false },
+];
+```
+
+The array is defined in `src/components/dashboard/dashboard.jsx`. The app filters it at runtime with `TABS.filter((tab) => tab.visible)` to build the sidebar navigation and the main render loop. Tabs with `visible: false` are completely excluded from the UI.
+
+<Note>
+  The **CATEGORÍAS** tab is hidden from the sidebar by default (`visible: false`). To expose it to the admin user, open `src/components/dashboard/dashboard.jsx` and change the `categories` entry to `visible: true`. This is intentional — categories are infrequently modified and hiding the tab reduces sidebar clutter.
+</Note>
+
+## Explore the dashboard sections
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/dashboard/authentication">
+    Understand how session checks, login, and logout work in the Next.js + Supabase setup.
+  </Card>
+  <Card title="Product Management" icon="box" href="/dashboard/product-management">
+    Add, edit, and delete products with image upload, WebP conversion, and category-driven specs.
+  </Card>
+  <Card title="Category Management" icon="folder" href="/dashboard/category-management">
+    Create and maintain the category taxonomy that powers product filtering and spec fields.
+  </Card>
+  <Card title="News Management" icon="newspaper" href="/dashboard/news-management">
+    Publish and manage news articles with auto-generated slugs and excerpts.
+  </Card>
+</CardGroup>

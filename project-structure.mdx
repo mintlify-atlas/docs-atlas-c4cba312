@@ -1,0 +1,174 @@
+---
+title: "Bicyblex Store Project Structure Explained"
+sidebarTitle: "Project Structure"
+description: "A tour of the Bicyblex Store directory layout — pages, components, context, utilities, and how Next.js path aliases connect them all."
+---
+
+Bicyblex Store is a **Next.js 16 Pages Router** application. All route entry points live in the top-level `pages/` directory, while UI components, shared context, library clients, and utilities are organised under `src/`. This separation keeps route files thin — each page file does little more than import and render its corresponding component tree — and puts all reusable logic where it belongs: inside `src/`.
+
+## Directory tree
+
+```
+bicyblexStore/
+├── pages/
+│   ├── _app.js
+│   ├── _document.js
+│   ├── index.js          # Public storefront
+│   ├── login.js          # Admin login
+│   └── dashboard.js      # Protected admin dashboard
+├── src/
+│   ├── components/
+│   │   ├── index/        # Storefront UI components
+│   │   │   ├── topnav.jsx
+│   │   │   ├── hero.jsx
+│   │   │   ├── bikeProducts.jsx
+│   │   │   ├── electricMotos.jsx
+│   │   │   ├── electricKits.jsx
+│   │   │   ├── features.jsx
+│   │   │   ├── newsLetter.jsx
+│   │   │   └── footer.jsx
+│   │   ├── dashboard/    # Admin dashboard components
+│   │   │   ├── dashboard.jsx
+│   │   │   ├── product/
+│   │   │   │   ├── ProductManager.jsx
+│   │   │   │   ├── ProductForm.jsx
+│   │   │   │   └── ProductTable.jsx
+│   │   │   ├── category/
+│   │   │   │   └── categoryManager.jsx
+│   │   │   └── newsletter/
+│   │   │       └── newsLetterForm.jsx
+│   │   └── login/
+│   │       └── login.jsx
+│   ├── context/
+│   │   └── GlobalContext.js   # Site-wide data (phone, WhatsApp URLs, social links)
+│   ├── lib/
+│   │   └── supabaseClient.js  # Supabase client singleton
+│   └── utils/
+│       └── imageUtils.js      # convertToWebP() utility
+├── public/               # Static assets
+├── styles/
+│   └── globals.css
+├── .env.local            # (not committed) Supabase credentials
+├── jsconfig.json         # Path alias: @/ → project root
+├── next.config.mjs
+└── package.json
+```
+
+## Key files
+
+<AccordionGroup>
+  <Accordion title="pages/index.js — Public storefront">
+    The storefront entry point. It wraps all section components in a `<GlobalProvider>` so that every child has access to site-wide data via the `useGlobalData()` hook. Components are composed in order: `<Topnav>`, `<Hero>`, `<NewsLetter>`, `<Products>`, `<ElectricMotos>`, `<ElectricKits>`, `<Features>`, `<Footer>`. The page also sets the document `<title>` and meta description via `next/head`.
+
+    ```js
+    import { GlobalProvider } from "@/src/context/GlobalContext";
+
+    export default function Home() {
+      return (
+        <GlobalProvider>
+          {/* Head, Topnav, Hero, sections, Footer */}
+        </GlobalProvider>
+      );
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="pages/login.js — Admin login">
+    A minimal page file that renders the `<Login>` component from `src/components/login/login.jsx`. All login logic (form state, Supabase Auth call, redirect on success) lives inside that component.
+
+    ```js
+    import Login from "@/src/components/login/login";
+
+    export default function login() {
+      return <Login />;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="pages/dashboard.js — Protected admin dashboard">
+    Renders the `<Dashboard>` component from `src/components/dashboard/dashboard.jsx`. The `<Dashboard>` component is responsible for checking the active Supabase session and redirecting unauthenticated visitors back to `/login`. Once authenticated, it exposes the full product, category, and news management interface.
+
+    ```js
+    import Dashboard from "../src/components/dashboard/dashboard";
+
+    export default function dashboard() {
+      return <Dashboard />;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="src/lib/supabaseClient.js — Supabase singleton">
+    Creates and exports a single Supabase client instance shared across the entire application. It reads `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from the environment and logs a console error if either is missing, preventing silent failures.
+
+    ```js
+    import { createClient } from "@supabase/supabase-js";
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error(
+        "⚠️ Error: Faltan las variables de entorno de Supabase en .env.local"
+      );
+    }
+
+    export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    ```
+
+    Import this singleton wherever you need to query the database or interact with Storage:
+
+    ```js
+    import { supabase } from "@/src/lib/supabaseClient";
+    ```
+  </Accordion>
+
+  <Accordion title="src/context/GlobalContext.js — Site-wide data">
+    Defines a `siteData` object holding the business phone number, pre-built WhatsApp message URLs for different flows (generic inquiry, newsletter item, product inquiry, electric kits), email, social links (TikTok, Instagram), and the current app version. `GlobalProvider` wraps the storefront and `useGlobalData()` is the hook used by any child component to read this data.
+
+    ```js
+    import { useGlobalData } from "@/src/context/GlobalContext";
+
+    // Inside any component wrapped by <GlobalProvider>:
+    const { productWhatsAppMessageUrl, phone, instagramLink } = useGlobalData();
+    ```
+  </Accordion>
+
+  <Accordion title="src/utils/imageUtils.js — WebP conversion">
+    Exports a single `convertToWebP(file, quality)` function. It accepts a `File` object and an optional quality value (default `0.8`), draws the image onto an off-screen `<canvas>`, and returns a Promise that resolves to a new `.webp` `File` object. This is called before any product image is uploaded to Supabase Storage, reducing file sizes automatically.
+
+    ```js
+    import { convertToWebP } from "@/src/utils/imageUtils";
+
+    // Convert before uploading:
+    const webpFile = await convertToWebP(selectedFile, 0.8);
+    // Then upload webpFile to Supabase Storage
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Path alias
+
+<Note>
+  `jsconfig.json` configures a single path alias: `@/*` maps to `./*` (the project root). This means you can import any file in the project using `@/` as the base, regardless of how deeply nested the importing file is. For example, `@/src/lib/supabaseClient` always resolves to `src/lib/supabaseClient.js` — no `../../../` traversal needed.
+
+  ```json jsconfig.json
+  {
+    "compilerOptions": {
+      "paths": {
+        "@/*": ["./*"]
+      }
+    }
+  }
+  ```
+</Note>
+
+## Page surfaces
+
+The application is split into two clearly separated user-facing surfaces:
+
+| Surface | Route | Entry file | Auth required |
+|---|---|---|---|
+| **Public storefront** | `/` | `pages/index.js` | No |
+| **Admin dashboard** | `/dashboard` | `pages/dashboard.js` | Yes (Supabase Auth) |
+
+The storefront is fully public and requires no login. The dashboard checks for a valid Supabase session on mount; visitors without one are redirected to `/login`. There is no middleware-level route protection — the guard is implemented inside the `<Dashboard>` component itself.

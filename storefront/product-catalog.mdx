@@ -1,0 +1,92 @@
+---
+title: "Product Catalog: Bikes and Electric Motos on the Storefront"
+sidebarTitle: "Product Catalog"
+description: "How the Bicyblex storefront fetches and displays bike products and electric motos from Supabase, with WhatsApp-integrated purchase inquiries."
+---
+
+The Bicyblex storefront displays two dedicated product sections on the homepage — **bicycles** (`bikeProducts.jsx`) and **electric motos** (`electricMotos.jsx`). Both sections pull their inventory live from the Supabase `products` table, filter by category, and render each item as a product card with specs and a direct WhatsApp purchase inquiry button. This architecture means the storefront always reflects the current state of the database: publish a product in the admin dashboard and it appears on the public site immediately.
+
+## Data Fetching
+
+Both components follow the same data-fetching pattern: on mount, they query the `products` table using a join on the `categories` table, then filter the results by category name in the frontend.
+
+**Bicycle fetch** (`bikeProducts.jsx`):
+
+```js
+const { data, error } = await supabase
+  .from("products")
+  .select("*, categories(name)");
+
+// Filter to the Bicicletas category
+const bicis = formattedBikes.filter(
+  (b) => b.category.toUpperCase() === "BICICLETAS"
+);
+```
+
+**Electric moto fetch** (`electricMotos.jsx`):
+
+```js
+const { data, error } = await supabase
+  .from("products")
+  .select("*, categories(name)");
+
+// Filter to the exact category name
+const electricMotos = data.filter(
+  (item) => item.categories?.name === "Bicimotos Eléctricas"
+);
+```
+
+Each product record is then mapped to a display-friendly shape. The bikes section also exposes an **aro (wheel size) filter**, letting visitors narrow the grid to a specific size:
+
+```js
+const filterOptions = ["TODOS", "12", "16", "20", "24", "26", "27.5", "29"];
+```
+
+The filter compares against the `specs.aro` field stored in the product's JSON `specs` column. When no products match the selected aro, the section renders a "Sin existencias" empty state.
+
+## Product Cards
+
+Each product card surfaces the most important information at a glance: name, price (prefixed with `S/`), product image, a tag badge (e.g. `"NUEVO"` or `"ELECTRICA"`), and up to three spec fields from the product's `specs` JSON column.
+
+The call-to-action button at the bottom of every card opens a pre-filled WhatsApp chat using the `productWhatsAppMessageUrl` from `GlobalContext`, with the product name (and for bikes, the aro size) appended to the message:
+
+```js
+// Bicycle CTA URL construction (bikeProducts.jsx)
+href={`${data.productWhatsAppMessageUrl}+${encodeURIComponent(bike.name)}+%20${encodeURIComponent(`Aro:${bike.aro}`)}`}
+
+// Electric moto CTA URL construction (electricMotos.jsx)
+href={`${data.productWhatsAppMessageUrl}+${encodeURIComponent(moto.name) + " " + encodeURIComponent(moto.motor)}`}
+```
+
+## WhatsApp URL Pattern
+
+The base URL for all product inquiries comes from `GlobalContext`:
+
+```js
+productWhatsAppMessageUrl: `https://wa.me/+51960413023?text=Hola%20Bicyblex%2C%20estoy%20interesado%20en%20el%20producto%20`
+```
+
+When a visitor clicks **"LO QUIERO !"** (bikes) or **"Ordenar Ahora"** (motos), the product name and relevant spec are URL-encoded and appended to this base string. The resulting WhatsApp message lands in the business inbox pre-populated with exactly which product the customer is enquiring about — no manual follow-up disambiguation needed.
+
+## Product Spec Fields by Category
+
+Product specs are stored as a flexible JSON object in the `specs` column of the `products` table. The fields vary by category:
+
+| Category | Category Slug | Spec Fields Displayed |
+|----------|---------------|-----------------------|
+| Bicicletas | `bicicletas` | `aro`, `material`, `freno` |
+| Bicimotos Eléctricas | `bicimotos-electricas` | `autonomia`, `potencia`, `velocidad` |
+| Kits Eléctricos | `kits-electricos` | `descripcion` |
+| Accesorios | `accesorios` | `Dato 1`, `Dato 2`, `Dato 3` |
+
+For bicycles, the `aro` field is also used by the storefront filter — it must be a numeric string matching one of the filter options (`"12"`, `"16"`, `"20"`, `"24"`, `"26"`, `"27.5"`, `"29"`). If `aro` is absent from the stored specs, the component defaults to `"29"`.
+
+For electric motos, the component reads `specs.potencia` as the primary motor field, with `specs.motor` as a fallback:
+
+```js
+motor: item.specs?.potencia || item.specs?.motor || "N/A",
+```
+
+<Tip>
+  To add or update products shown on the storefront, use the admin dashboard at `/dashboard`. Changes are reflected on the public site immediately — there is no build step or cache to invalidate between saving a product and it appearing live.
+</Tip>
