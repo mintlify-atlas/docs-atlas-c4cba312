@@ -1,5 +1,5 @@
 ---
-title: "Bicyblex Store Database Schema Reference"
+title: "Bicyblex Store: Database Schema, Tables & Relationships"
 sidebarTitle: "Database Schema"
 description: "Full schema for the three Supabase tables powering Bicyblex Store: products, categories, and news — with column types, constraints, and relationships."
 ---
@@ -48,7 +48,7 @@ The products table stores every item in the Bicyblex catalog. The `specs` column
 |--------|------|-------------|-------------|
 | `id` | `SERIAL` | Primary Key | Auto-incrementing integer ID |
 | `name` | `TEXT` | NOT NULL | Product display name |
-| `price` | `NUMERIC(10, 2)` | NOT NULL, DEFAULT 0 | Price in local currency |
+| `price` | `NUMERIC` | NOT NULL, DEFAULT 0 | Price in local currency |
 | `stock` | `INTEGER` | NOT NULL, DEFAULT 0 | Number of units in inventory |
 | `category_id` | `INTEGER` | FK → `categories.id` | References the product's category |
 | `specs` | `JSONB` | DEFAULT `'{}'` | Dynamic technical specs; structure varies by category |
@@ -59,7 +59,7 @@ The products table stores every item in the Bicyblex catalog. The `specs` column
 CREATE TABLE products (
   id          SERIAL PRIMARY KEY,
   name        TEXT NOT NULL,
-  price       NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  price       NUMERIC NOT NULL DEFAULT 0,
   stock       INTEGER NOT NULL DEFAULT 0,
   category_id INTEGER REFERENCES categories(id),
   specs       JSONB DEFAULT '{}',
@@ -70,7 +70,7 @@ CREATE TABLE products (
 
 ### `specs` JSONB structure by category
 
-The shape of the `specs` object depends on which category a product belongs to:
+The shape of the `specs` object depends on which category a product belongs to. The keys below match exactly the `key` values defined in `ProductForm.jsx`'s `CONFIG` object:
 
 <CodeGroup>
 

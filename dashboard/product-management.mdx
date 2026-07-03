@@ -72,7 +72,7 @@ Product images are processed client-side before being stored. When a file is sel
     imageUrl = publicUrlData.publicUrl;
     ```
   </Step>
-  <Step title="Upsert the product row">
+  <Step title="Save the product row">
     The final payload — including the `imageUrl` — is written to the `products` table. For new products, `insert` is used; for edits, `update` is called with the product's `id`:
     ```js
     // Insert (new product)

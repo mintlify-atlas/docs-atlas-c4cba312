@@ -28,26 +28,29 @@ export const convertToWebP = (file, quality = 0.8) => {
       const img = new Image();
       img.src = event.target.result;
       img.onload = () => {
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0);
 
         canvas.toBlob(
           (blob) => {
             if (blob) {
+              // Creamos un nuevo objeto File con la extensión .webp
               const webpFile = new File(
                 [blob],
-                file.name.replace(/\.[^/.]+$/, '.webp'),
-                { type: 'image/webp' }
+                file.name.replace(/\.[^/.]+$/, ".webp"),
+                {
+                  type: "image/webp",
+                }
               );
               resolve(webpFile);
             } else {
-              reject(new Error('Error al convertir a WebP'));
+              reject(new Error("Error al convertir a WebP"));
             }
           },
-          'image/webp',
+          "image/webp",
           quality
         );
       };
@@ -87,7 +90,7 @@ When an admin submits a new or updated product with an image, `ProductManager.js
     ```js
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
     const { data, error } = await supabase.storage
-      .from('products')
+      .from("products")
       .upload(fileName, webpFile);
     ```
   </Step>
@@ -95,7 +98,7 @@ When an admin submits a new or updated product with an image, `ProductManager.js
     After upload, the public URL is fetched and saved in the product row:
     ```js
     const { data: publicUrlData } = supabase.storage
-      .from('products')
+      .from("products")
       .getPublicUrl(fileName);
     imageUrl = publicUrlData.publicUrl;
     ```
@@ -110,10 +113,10 @@ When an admin submits a new or updated product with an image, `ProductManager.js
       category_id: parseInt(payload.categoryId),
       specs: payload.specs || {},
       image: imageUrl,
-      tag: payload.tag || 'general',
+      tag: payload.tag || "general",
     };
-    await supabase.from('products').insert([finalPayload]);
-    // or .update(finalPayload).eq('id', payload.id) for edits
+    await supabase.from("products").insert([finalPayload]);
+    // or .update(finalPayload).eq("id", payload.id) for edits
     ```
   </Step>
 </Steps>
@@ -123,14 +126,14 @@ When an admin submits a new or updated product with an image, `ProductManager.js
 News article cover images follow a similar upload pattern, but they are **not** converted to WebP — the original file extension is preserved. Images are stored under the `news/` path prefix inside the `news` bucket.
 
 ```js
-const fileExt = imageFile.name.split('.').pop();
+const fileExt = imageFile.name.split(".").pop();
 const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 const filePath = `news/${fileName}`;
 
-await supabase.storage.from('news').upload(filePath, imageFile);
+const { error: uploadError } = await supabase.storage.from("news").upload(filePath, imageFile);
 
 const { data: publicUrlData } = supabase.storage
-  .from('news')
+  .from("news")
   .getPublicUrl(filePath);
 
 imageUrl = publicUrlData.publicUrl;

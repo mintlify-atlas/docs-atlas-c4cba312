@@ -1,7 +1,7 @@
 ---
 title: "Category Management: Define Product Classification"
 sidebarTitle: "Categories"
-description: "Manage Bicyblex product categories from the dashboard. Category slugs control which spec fields appear in the product form and how products are filtered on the storefront."
+description: "Manage Bicyblex product categories from the hidden dashboard tab. Category slugs drive spec field mapping and product filtering on the storefront."
 ---
 
 Categories define how products are classified in Bicyblex Store. Every product must belong to a category, and the category's `slug` does more than act as a URL identifier — it is the key that the product form uses to look up which dynamic spec fields to render. Getting slugs right is therefore critical: a category whose slug doesn't match a `CONFIG` entry in `ProductForm.jsx` will produce no spec fields in the product form. Category management is handled by the `CategoryManager` component (`src/components/dashboard/category/categoryManager.jsx`), which reads from and writes to the Supabase `categories` table.

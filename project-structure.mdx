@@ -1,5 +1,5 @@
 ---
-title: "Bicyblex Store Project Structure Explained"
+title: "Bicyblex Store Project Structure and Directory Layout"
 sidebarTitle: "Project Structure"
 description: "A tour of the Bicyblex Store directory layout — pages, components, context, utilities, and how Next.js path aliases connect them all."
 ---
@@ -80,7 +80,11 @@ bicyblexStore/
     import Login from "@/src/components/login/login";
 
     export default function login() {
-      return <Login />;
+      return (
+        <>
+          <Login />
+        </>
+      );
     }
     ```
   </Accordion>
@@ -89,10 +93,15 @@ bicyblexStore/
     Renders the `<Dashboard>` component from `src/components/dashboard/dashboard.jsx`. The `<Dashboard>` component is responsible for checking the active Supabase session and redirecting unauthenticated visitors back to `/login`. Once authenticated, it exposes the full product, category, and news management interface.
 
     ```js
+    import React from "react";
     import Dashboard from "../src/components/dashboard/dashboard";
 
     export default function dashboard() {
-      return <Dashboard />;
+      return (
+        <div>
+          <Dashboard />
+        </div>
+      );
     }
     ```
   </Accordion>

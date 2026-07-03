@@ -1,5 +1,5 @@
 ---
-title: "Set Up Supabase for Bicyblex Store"
+title: "Supabase Project Setup Guide for Bicyblex Store"
 sidebarTitle: "Supabase Setup"
 description: "Create the Supabase project, database tables, storage buckets, and auth user needed to run Bicyblex Store locally or in production."
 ---
@@ -33,7 +33,16 @@ CREATE TABLE categories (
 );
 ```
 
-The application expects four specific category slugs — `bicicletas`, `bicimotos-electricas`, `kits-electricos`, and `accesorios` — because `ProductForm.jsx` maps each slug to a set of dynamic technical-spec fields (e.g. `aro`, `material`, `freno` for `bicicletas`; `autonomia`, `potencia`, `velocidad` for `bicimotos-electricas`). Seed the initial categories with the following INSERT:
+The application expects four specific category slugs — `bicicletas`, `bicimotos-electricas`, `kits-electricos`, and `accesorios` — because `ProductForm.jsx` maps each slug to a set of dynamic technical-spec fields via its `CONFIG` object:
+
+| Slug                    | Spec fields rendered                          |
+| ----------------------- | --------------------------------------------- |
+| `bicicletas`            | `aro`, `material`, `freno`                    |
+| `bicimotos-electricas`  | `autonomia`, `potencia`, `velocidad`          |
+| `kits-electricos`       | `descripcion`                                 |
+| `accesorios`            | `Dato 1`, `Dato 2`, `Dato 3`                  |
+
+Seed the initial categories with the following INSERT:
 
 ```sql
 INSERT INTO categories (name, slug) VALUES
@@ -72,7 +81,7 @@ Column notes:
 - **`price`** — stored as `NUMERIC(10, 2)`; the application reads and writes it as a JavaScript `float` via `parseFloat()`.
 - **`stock`** — read and written as an integer via `parseInt()`.
 - **`category_id`** — foreign key to `categories.id`; the product manager queries it with `.select("*, categories(name)")` to join the category name in a single round-trip.
-- **`specs`** — a `JSONB` object whose keys vary by category (e.g. `{ "aro": "29\"", "material": "Aluminio", "freno": "Disco" }`).
+- **`specs`** — a `JSONB` object whose keys vary by category (e.g. `{ "aro": "29\"", "material": "Aluminio", "freno": "Disco" }` for `bicicletas`).
 - **`image`** — stores the full public URL of the image uploaded to the `products` storage bucket.
 - **`tag`** — a free-text label; defaults to `'general'`.
 

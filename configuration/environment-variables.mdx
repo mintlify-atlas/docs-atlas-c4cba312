@@ -1,5 +1,5 @@
 ---
-title: "Environment Variables for Bicyblex Store"
+title: "Bicyblex Store Environment Variables Configuration"
 sidebarTitle: "Environment Variables"
 description: "Configure the two required Supabase environment variables that connect Bicyblex Store to your database, auth, and storage backend."
 ---
@@ -37,13 +37,16 @@ Replace `your-project-id` and `your-anon-key-here` with the actual values from y
 `src/lib/supabaseClient.js` reads both variables and passes them directly to `createClient`. It also includes a guard that logs a descriptive error to the console if either variable is missing, making misconfiguration easy to diagnose during development:
 
 ```js src/lib/supabaseClient.js
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// Validamos que las credenciales existan para evitar que la app se rompa en silencio
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('⚠️ Error: Faltan las variables de entorno de Supabase en .env.local');
+  console.error(
+    "⚠️ Error: Faltan las variables de entorno de Supabase en .env.local"
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

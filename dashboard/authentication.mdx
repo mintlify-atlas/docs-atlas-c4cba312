@@ -1,7 +1,7 @@
 ---
 title: "Authenticate and Access the Bicyblex Admin Dashboard"
 sidebarTitle: "Authentication"
-description: "Bicyblex uses Supabase Auth to protect the admin dashboard. Learn how session checks, login, and logout work in the Next.js app."
+description: "Bicyblex uses Supabase Auth to guard the admin dashboard. Learn how session checks, redirects, and logout work in the Next.js client."
 ---
 
 The Bicyblex admin dashboard is protected by Supabase session-based authentication. Every visit to `/dashboard` triggers an async session check before any dashboard UI is painted. If no valid Supabase session is found, the visitor is automatically redirected to `/login` — there is no way to access the dashboard content without first authenticating. The entire auth flow is handled client-side inside the `DashboardCentral` component using the Supabase JavaScript client.

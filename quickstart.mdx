@@ -1,5 +1,5 @@
 ---
-title: "Get Started with Bicyblex Store in 5 Steps"
+title: "Quickstart: Run Bicyblex Store Locally in Five Steps"
 sidebarTitle: "Quickstart"
 description: "Clone Bicyblex Store, configure your Supabase project, add environment variables, and have a fully working local dev server running in under 10 minutes."
 ---
@@ -58,7 +58,7 @@ This guide walks you through getting Bicyblex Store running on your local machin
     - **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** — the `anon` / `public` key listed under "Project API keys"
 
     <Warning>
-      Never commit `.env.local` to version control. It is already listed in `.gitignore`. If either variable is missing at runtime, `supabaseClient.js` will log a warning (`⚠️ Error: Faltan las variables de entorno de Supabase en .env.local`) and the app will fail to connect to the database.
+      Never commit `.env.local` to version control. It is already listed in `.gitignore`. If either variable is missing at runtime, `supabaseClient.js` will log a console error (`⚠️ Error: Faltan las variables de entorno de Supabase en .env.local`) and the app will fail to connect to the database.
     </Warning>
   </Step>
 
